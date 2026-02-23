@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Admin Swapantau Limbah</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <style>
+    body {
+      background: #f4f9f7;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .navbar-custom {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .navbar-brand {
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .chart-container, .table-container {
+      background: #fff;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      padding: 20px;
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+    .badge {
+      font-size: 0.85rem;
+      padding: 8px 12px;
+    }
+    .table thead th {
+      background-color: #2c3e50;
+      color: white;
+      font-weight: 500;
+      border-bottom: none;
+      white-space: nowrap;
+      text-align: center;
+      vertical-align: middle;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .table tbody td {
+      vertical-align: middle;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .table-responsive {
+      max-height: 500px;
+      border-radius: 10px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-3 mb-4">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand" href="#">
+        <i class="fas fa-desktop me-2"></i> Swapantau Limbah
+      </a>
+    </div>
+  </nav>
+
+  <div class="container-fluid px-4 mb-5">
+    
+    <div class="row mb-4">
+      <div class="col-12 d-flex align-items-center justify-content-end gap-2 flex-wrap">
+         <select id="monthFilter" class="form-select shadow-sm" style="width: auto; font-weight: 500; border-color: #11998e;">
+           <option value="all">Semua Bulan</option>
+           <option value="Januari">Januari</option>
+           <option value="Februari">Februari</option>
+           <option value="Maret">Maret</option>
+           <option value="April">April</option>
+           <option value="Mei">Mei</option>
+           <option value="Juni">Juni</option>
+           <option value="Juli">Juli</option>
+           <option value="Agustus">Agustus</option>
+           <option value="September">September</option>
+           <option value="Oktober">Oktober</option>
+           <option value="November">November</option>
+           <option value="Desember">Desember</option>
+         </select>
+         <select id="yearFilter" class="form-select shadow-sm" style="width: auto; font-weight: 500; border-color: #11998e;">
+           <option value="all">Semua Tahun</option>
+           <option value="2026">2026</option>
+           <option value="2027">2027</option>
+           <option value="2028">2028</option>
+           <option value="2029">2029</option>
+           <option value="2030">2030</option>
+         </select>
+         <button class="btn btn-success shadow-sm text-nowrap" onclick="downloadExcel()">
+          <i class="fas fa-file-excel me-1"></i> Download Excel
+        </button>
+      </div>
+    </div>
+
+    <div class="text-center py-5" id="loading">
+      <div class="spinner-border text-success mb-3" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <h5 class="text-muted">Membangun Dashboard dari Spreadsheet...</h5>
+    </div>
+
+    <div id="mainContentWrapper" class="d-none">
+      
+      <div class="row">
+        <div class="col-lg-4 col-md-12">
+          <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="text-secondary m-0"><i class="fas fa-tint me-2 text-primary"></i>Grafik Trend pH</h5>
+              <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('chartPH', 'Grafik_pH')" title="Download Grafik pH"><i class="fas fa-download"></i></button>
+            </div>
+            <div id="statusPH" class="mb-3"></div>
+            <canvas id="chartPH" style="background-color: white;"></canvas>
+          </div>
+        </div>
+        
+        <div class="col-lg-4 col-md-12">
+          <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="text-secondary m-0"><i class="fas fa-thermometer-half me-2 text-danger"></i>Grafik Trend Suhu</h5>
+              <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('chartSuhu', 'Grafik_Suhu')" title="Download Grafik Suhu"><i class="fas fa-download"></i></button>
+            </div>
+            <div id="statusSuhu" class="mb-3"></div>
+            <canvas id="chartSuhu" style="background-color: white;"></canvas>
+          </div>
+        </div>
+
+        <div class="col-lg-4 col-md-12">
+          <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="text-secondary m-0"><i class="fas fa-water me-2 text-info"></i>Grafik Trend TDS</h5>
+              <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart('chartTDS', 'Grafik_TDS')" title="Download Grafik TDS"><i class="fas fa-download"></i></button>
+            </div>
+            <div id="statusTDS" class="mb-3"></div>
+            <canvas id="chartTDS" style="background-color: white;"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container mt-2">
+        <h5 class="text-secondary mb-3"><i class="fas fa-table me-2 text-success"></i>Tabel Data Debit Air & SV30 (Harian)</h5>
+        <div class="table-responsive shadow-sm">
+          <table class="table table-bordered table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Pemeriksa</th>
+                <th>Debit BPA</th>
+                <th>Debit SBR1</th>
+                <th>Debit SBR2</th>
+                <th>Debit SBR3</th>
+                <th class="bg-primary text-white">Debit Outlet IPAL</th>
+                <th>SV30 SBR1</th>
+                <th>SV30 SBR2</th>
+                <th>SV30 SBR3</th>
+              </tr>
+            </thead>
+            <tbody id="tableDebitSV30">
+              </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI SINI
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbz_bvwZbB2rPV7bmVxUdcjtnd_G8tGdYrMcKueJlNEF431aeRKpCCECfganPSug0L-iHw/exec'; 
+
+    let globalData = []; 
+    let currentFilteredData = []; // Menyimpan data yang sedang terfilter untuk Excel
+    let chartPH, chartSuhu, chartTDS; 
+    const namaBulanList = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+    fetch(scriptURL)
+      .then(response => response.json())
+      .then(data => {
+        globalData = data;
+        const mainContentWrapper = document.getElementById('mainContentWrapper');
+        const loading = document.getElementById('loading');
+        
+        const monthFilter = document.getElementById('monthFilter');
+        const yearFilter = document.getElementById('yearFilter');
+
+        function applyFilters() {
+          const selectedMonth = monthFilter.value;
+          const selectedYear = yearFilter.value;
+
+          if (selectedMonth === 'all' && selectedYear === 'all') {
+             renderDashboard(globalData, 'all', 'all');
+          } else {
+             const header = globalData[0];
+             const filteredRows = globalData.slice(1).filter(row => {
+               let dateObj = new Date(row[2]);
+               if (isNaN(dateObj.getTime())) dateObj = new Date(row[0]);
+               if (isNaN(dateObj.getTime())) return false;
+
+               const rowMonth = namaBulanList[dateObj.getMonth()];
+               const rowYear = dateObj.getFullYear().toString();
+
+               const matchMonth = (selectedMonth === 'all') || (rowMonth === selectedMonth);
+               const matchYear = (selectedYear === 'all') || (rowYear === selectedYear);
+
+               return matchMonth && matchYear;
+             });
+             renderDashboard([header, ...filteredRows], selectedMonth, selectedYear);
+          }
+        }
+
+        monthFilter.addEventListener('change', applyFilters);
+        yearFilter.addEventListener('change', applyFilters);
+
+        loading.classList.add('d-none');
+        mainContentWrapper.classList.remove('d-none');
+        renderDashboard(globalData, 'all', 'all');
+      })
+      .catch(error => {
+        console.error('Error memuat data:', error);
+        document.getElementById('loading').innerHTML = `
+          <div class="text-danger">
+            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+            <h5>Gagal memuat data.</h5>
+            <p>Pastikan URL Apps Script sudah benar.</p>
+          </div>
+        `;
+      });
+
+    // --- FUNGSI UTAMA RENDER DASHBOARD ---
+    function renderDashboard(data, selectedMonth, selectedYear) {
+      currentFilteredData = data; // Simpan data untuk kebutuhan export Excel
+      const totalRows = data.length > 1 ? data.length - 1 : 0;
+      
+      const statusPH = document.getElementById('statusPH');
+      const statusSuhu = document.getElementById('statusSuhu');
+      const statusTDS = document.getElementById('statusTDS');
+      const tbodyDebit = document.getElementById('tableDebitSV30');
+      
+      tbodyDebit.innerHTML = '';
+      statusPH.innerHTML = '';
+      statusSuhu.innerHTML = '';
+      statusTDS.innerHTML = '';
+
+      if (chartPH) chartPH.destroy();
+      if (chartSuhu) chartSuhu.destroy();
+      if (chartTDS) chartTDS.destroy();
+
+      if(totalRows > 0) {
+        // --- LOGIKA STATUS TERAKHIR (TIDAK DIGANTI) ---
+        const lastPH = parseFloat(data[data.length - 1][3]);
+        const lastSuhu = parseFloat(data[data.length - 1][4]);
+        const lastTDS = parseFloat(data[data.length - 1][5]);
+
+        if (lastPH >= 6 && lastPH <= 9) {
+          statusPH.innerHTML = `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Data Terakhir Memenuhi (${lastPH})</span>`;
+        } else {
+          statusPH.innerHTML = `<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Data Terakhir Tdk Memenuhi (${lastPH})</span>`;
+        }
+
+        if (lastSuhu < 38) {
+          statusSuhu.innerHTML = `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Data Terakhir Memenuhi (${lastSuhu}°C)</span>`;
+        } else {
+          statusSuhu.innerHTML = `<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Data Terakhir Tdk Memenuhi (${lastSuhu}°C)</span>`;
+        }
+
+        if (lastTDS < 2000) {
+          statusTDS.innerHTML = `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Data Terakhir Memenuhi (${lastTDS} mg/L)</span>`;
+        } else {
+          statusTDS.innerHTML = `<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>Data Terakhir Tdk Memenuhi (${lastTDS} mg/L)</span>`;
+        }
+
+        // --- LOGIKA GRAFIK HARIAN (TIDAK DIGANTI) ---
+        let labelsX = [];
+        let dataPH = [];
+        let dataSuhu = [];
+        let dataTDS = [];
+
+        if (selectedMonth !== 'all' && selectedYear !== 'all') {
+          const mIndex = namaBulanList.indexOf(selectedMonth);
+          const yInt = parseInt(selectedYear);
+          const daysInMonth = new Date(yInt, mIndex + 1, 0).getDate(); 
+
+          for (let d = 1; d <= daysInMonth; d++) {
+            labelsX.push(d.toString()); 
+            
+            const dayRows = data.slice(1).filter(row => {
+              let dObj = new Date(row[2]);
+              if (isNaN(dObj.getTime())) dObj = new Date(row[0]);
+              return dObj.getDate() === d;
+            });
+
+            const phVals = dayRows.map(r => parseFloat(r[3])).filter(n => !isNaN(n));
+            const suhuVals = dayRows.map(r => parseFloat(r[4])).filter(n => !isNaN(n));
+            const tdsVals = dayRows.map(r => parseFloat(r[5])).filter(n => !isNaN(n));
+
+            dataPH.push(phVals.length ? (phVals.reduce((a,b)=>a+b,0)/phVals.length).toFixed(2) : null);
+            dataSuhu.push(suhuVals.length ? (suhuVals.reduce((a,b)=>a+b,0)/suhuVals.length).toFixed(2) : null);
+            dataTDS.push(tdsVals.length ? (tdsVals.reduce((a,b)=>a+b,0)/tdsVals.length).toFixed(2) : null);
+          }
+        } 
+        else {
+          const dailyData = {};
+          for (let i = 1; i < data.length; i++) {
+            let dateObj = new Date(data[i][2]);
+            if (isNaN(dateObj.getTime())) dateObj = new Date(data[i][0]); 
+            
+            const dayLabel = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            
+            if (!dailyData[dayLabel]) dailyData[dayLabel] = { ph: [], suhu: [], tds: [], dateObj: dateObj };
+            
+            dailyData[dayLabel].ph.push(parseFloat(data[i][3]));
+            dailyData[dayLabel].suhu.push(parseFloat(data[i][4]));
+            dailyData[dayLabel].tds.push(parseFloat(data[i][5]));
+          }
+
+          const sortedLabels = Object.keys(dailyData).sort((a, b) => dailyData[a].dateObj - dailyData[b].dateObj);
+
+          sortedLabels.forEach(label => {
+            labelsX.push(label);
+            const phArr = dailyData[label].ph.filter(n => !isNaN(n));
+            const suhuArr = dailyData[label].suhu.filter(n => !isNaN(n));
+            const tdsArr = dailyData[label].tds.filter(n => !isNaN(n));
+
+            dataPH.push(phArr.length ? (phArr.reduce((a, b) => a + b, 0) / phArr.length).toFixed(2) : null);
+            dataSuhu.push(suhuArr.length ? (suhuArr.reduce((a, b) => a + b, 0) / suhuArr.length).toFixed(2) : null);
+            dataTDS.push(tdsArr.length ? (tdsArr.reduce((a, b) => a + b, 0) / tdsArr.length).toFixed(2) : null);
+          });
+        }
+
+        chartPH = new Chart(document.getElementById('chartPH'), {
+          type: 'line',
+          data: {
+            labels: labelsX,
+            datasets: [{ label: 'Rata-rata pH Harian', data: dataPH, borderColor: '#0d6efd', backgroundColor: 'rgba(13, 110, 253, 0.1)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#0d6efd', fill: true, tension: 0.3, spanGaps: true }]
+          },
+          options: { responsive: true }
+        });
+
+        chartSuhu = new Chart(document.getElementById('chartSuhu'), {
+          type: 'line',
+          data: {
+            labels: labelsX,
+            datasets: [{ label: 'Rata-rata Suhu Harian (°C)', data: dataSuhu, borderColor: '#dc3545', backgroundColor: 'rgba(220, 53, 69, 0.1)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#dc3545', fill: true, tension: 0.3, spanGaps: true }]
+          },
+          options: { responsive: true }
+        });
+
+        chartTDS = new Chart(document.getElementById('chartTDS'), {
+          type: 'line',
+          data: {
+            labels: labelsX,
+            datasets: [{ label: 'Rata-rata TDS Harian (mg/L)', data: dataTDS, borderColor: '#0dcaf0', backgroundColor: 'rgba(13, 202, 240, 0.1)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#0dcaf0', fill: true, tension: 0.3, spanGaps: true }]
+          },
+          options: { responsive: true }
+        });
+
+        const debitIndexes = [6, 7, 8, 9, 10]; 
+
+        for (let i = 1; i < data.length; i++) {
+          let row = document.createElement('tr');
+          const kolomPilihan = [2, 1, 6, 7, 8, 9, 10, 11, 12, 13];
+          
+          kolomPilihan.forEach(idx => {
+            let cell = document.createElement('td');
+            let cellData = data[i][idx] !== undefined ? data[i][idx] : "";
+            
+            if (idx === 1) { 
+              cell.innerHTML = `<strong>${cellData}</strong>`;
+            } else if (debitIndexes.includes(idx)) {
+              if (cellData === "" || cellData === null) {
+                cell.textContent = "-";
+              } else {
+                const originalIndex = globalData.indexOf(data[i]);
+                if (originalIndex > 1) {
+                  const prevRaw = globalData[originalIndex - 1][idx];
+                  const prevValue = (prevRaw === "" || prevRaw === null || prevRaw === undefined) ? 0 : parseFloat(prevRaw);
+                  const currentValue = parseFloat(cellData);
+                  let selisih = currentValue - prevValue;
+                  if (selisih < 0) selisih = currentValue; 
+                  cell.textContent = Number.isInteger(selisih) ? selisih : selisih.toFixed(2);
+                } else {
+                  cell.textContent = cellData;
+                }
+              }
+            } else {
+              cell.textContent = (cellData === "" || cellData === null) ? "-" : cellData;
+            }
+            row.appendChild(cell);
+          });
+          tbodyDebit.appendChild(row);
+        }
+      }
+    }
+
+    // --- FUNGSI DOWNLOAD GRAFIK (.PNG) ---
+    function downloadChart(canvasId, baseFilename) {
+      const canvas = document.getElementById(canvasId);
+      
+      // Membuat canvas sementara berlatar belakang putih agar grafik tidak transparan/hitam saat diunduh
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const ctx = tempCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; // Latar belakang putih
+      ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      ctx.drawImage(canvas, 0, 0);
+
+      const month = document.getElementById('monthFilter').value;
+      const year = document.getElementById('yearFilter').value;
+      
+      const link = document.createElement('a');
+      link.href = tempCanvas.toDataURL('image/png');
+      link.download = `${baseFilename}_${month}_${year}.png`;
+      link.click();
+    }
+
+    // --- FUNGSI DOWNLOAD EXCEL (.XLSX) ---
+    function downloadExcel() {
+      // Pastikan ada data untuk didownload (selain header)
+      if (!currentFilteredData || currentFilteredData.length <= 1) {
+        alert("Tidak ada data untuk didownload pada filter yang dipilih.");
+        return;
+      }
+
+      // Siapkan Header Kolom Excel
+      const excelData = [
+        ["Tanggal", "Pemeriksa", "pH", "Suhu (°C)", "TDS (mg/L)", "Debit BPA", "Debit SBR1", "Debit SBR2", "Debit SBR3", "Debit Outlet IPAL", "SV30 SBR1", "SV30 SBR2", "SV30 SBR3"]
+      ];
+
+      // Olah Data (terapkan selisih Debit persis seperti tampilan Tabel)
+      for (let i = 1; i < currentFilteredData.length; i++) {
+         let row = currentFilteredData[i];
+         let processedRow = [];
+         
+         // Data Umum (Tgl, Nama, pH, Suhu, TDS)
+         processedRow.push(row[2] || "-"); 
+         processedRow.push(row[1] || "-"); 
+         processedRow.push(row[3] || "-"); 
+         processedRow.push(row[4] || "-"); 
+         processedRow.push(row[5] || "-"); 
+
+         // Logika Selisih Debit (Indeks 6 s/d 10)
+         for (let j = 6; j <= 10; j++) {
+           let cellData = row[j] !== undefined ? row[j] : "";
+           if (cellData === "" || cellData === null) {
+             processedRow.push("-");
+           } else {
+             const originalIndex = globalData.indexOf(row);
+             if (originalIndex > 1) {
+               const prevRaw = globalData[originalIndex - 1][j];
+               const prevValue = (prevRaw === "" || prevRaw === null || prevRaw === undefined) ? 0 : parseFloat(prevRaw);
+               const currentValue = parseFloat(cellData);
+               let selisih = currentValue - prevValue;
+               if (selisih < 0) selisih = currentValue; 
+               processedRow.push(Number.isInteger(selisih) ? selisih : parseFloat(selisih.toFixed(2)));
+             } else {
+               processedRow.push(parseFloat(cellData)); 
+             }
+           }
+         }
+
+         // Data SV30 (Indeks 11 s/d 13)
+         processedRow.push(row[11] !== undefined && row[11] !== "" ? row[11] : "-");
+         processedRow.push(row[12] !== undefined && row[12] !== "" ? row[12] : "-");
+         processedRow.push(row[13] !== undefined && row[13] !== "" ? row[13] : "-");
+
+         excelData.push(processedRow);
+      }
+
+      // Konversi Array ke Sheet Excel
+      const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+      
+      // Merapikan lebar kolom (wpx = pixel width)
+      const wscols = [
+        {wpx: 90},  // Tanggal
+        {wpx: 120}, // Pemeriksa
+        {wpx: 60},  // pH
+        {wpx: 80},  // Suhu
+        {wpx: 80},  // TDS
+        {wpx: 80},  // BPA
+        {wpx: 80},  // SBR1
+        {wpx: 80},  // SBR2
+        {wpx: 80},  // SBR3
+        {wpx: 120}, // Outlet IPAL
+        {wpx: 80},  // SV30 1
+        {wpx: 80},  // SV30 2
+        {wpx: 80}   // SV30 3
+      ];
+      worksheet['!cols'] = wscols;
+
+      // Buat Workbook dan simpan
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Data_Limbah");
+      
+      const month = document.getElementById('monthFilter').value;
+      const year = document.getElementById('yearFilter').value;
+      const filename = `Data_Limbah_${month}_${year}.xlsx`;
+
+      XLSX.writeFile(workbook, filename);
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
