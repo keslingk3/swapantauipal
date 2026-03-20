@@ -207,41 +207,73 @@
   </div>
 
   <script>
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbz_bvwZbB2rPV7bmVxUdcjtnd_G8tGdYrMcKueJlNEF431aeRKpCCECfganPSug0L-iHw/exec'; 
+    // 🚀 URL FIREBASE BARU ANDA (Tambahkan /SWAPANTAU_IPAL.json di ujungnya)
+    const firebaseUrl = 'https://sikasik-7b9ce-default-rtdb.asia-southeast1.firebasedatabase.app/SWAPANTAU_IPAL.json'; 
     
     const form = document.forms['form-limbah'];
     const btnSubmit = document.getElementById('btnSubmit');
     const alertBox = document.getElementById('alert');
 
+    // Set nilai default tanggal hari ini saat form dimuat
     document.getElementById('tanggal').valueAsDate = new Date();
 
     form.addEventListener('submit', e => {
       e.preventDefault();
       
+      // Ubah tampilan tombol jadi loading
       btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Mengirim...';
       btnSubmit.disabled = true;
 
-      fetch(scriptURL, { method: 'POST', body: new FormData(form)})
-        .then(response => {
-          alertBox.classList.remove('d-none');
-          alertBox.classList.add('d-flex');
-          
-          form.reset();
-          document.getElementById('tanggal').valueAsDate = new Date(); 
-          btnSubmit.innerHTML = '<i class="fas fa-paper-plane me-2"></i>KIRIM DATA LAPORAN';
-          btnSubmit.disabled = false;
-          
-          setTimeout(() => {
-            alertBox.classList.add('d-none');
-            alertBox.classList.remove('d-flex');
-          }, 4000);
-        })
-        .catch(error => {
-          console.error('Error!', error.message);
-          alert('Terjadi kesalahan saat mengirim data. Silakan coba lagi.');
-          btnSubmit.innerHTML = '<i class="fas fa-paper-plane me-2"></i>KIRIM DATA LAPORAN';
-          btnSubmit.disabled = false;
-        });
+      // 1. Ambil semua data dari form
+      const formData = new FormData(form);
+      const dataToSave = {};
+      
+      formData.forEach((value, key) => {
+        dataToSave[key] = value;
+      });
+      
+      // Tambahkan timestamp kapan data ini diinput
+      dataToSave['timestamp'] = new Date().toISOString();
+
+      // 2. Kirim data ke Firebase menggunakan metode POST
+      fetch(firebaseUrl, { 
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dataToSave) // Data diubah jadi format JSON
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Tampilkan notifikasi sukses
+        alertBox.classList.remove('d-none');
+        alertBox.classList.add('d-flex');
+        
+        // Reset form
+        form.reset();
+        document.getElementById('tanggal').valueAsDate = new Date(); 
+        
+        // Kembalikan tombol ke keadaan semula
+        btnSubmit.innerHTML = '<i class="fas fa-paper-plane me-2"></i>KIRIM DATA LAPORAN';
+        btnSubmit.disabled = false;
+        
+        // Hilangkan notifikasi sukses setelah 4 detik
+        setTimeout(() => {
+          alertBox.classList.add('d-none');
+          alertBox.classList.remove('d-flex');
+        }, 4000);
+      })
+      .catch(error => {
+        console.error('Error!', error.message);
+        alert('Terjadi kesalahan saat mengirim data ke Firebase. Silakan coba lagi.');
+        btnSubmit.innerHTML = '<i class="fas fa-paper-plane me-2"></i>KIRIM DATA LAPORAN';
+        btnSubmit.disabled = false;
+      });
     });
   </script>
 
