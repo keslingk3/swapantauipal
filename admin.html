@@ -719,6 +719,17 @@
                   cell.textContent = cellData;
                 }
               }
+            } else if (idx === 2) {
+              // 🚀 LOGIKA PERAPIH FORMAT TANGGAL
+              let dObj = new Date(cellData);
+              if (!isNaN(dObj.getTime())) {
+                const day = String(dObj.getDate()).padStart(2, '0');
+                const month = String(dObj.getMonth() + 1).padStart(2, '0');
+                const year = dObj.getFullYear();
+                cell.textContent = `${day}/${month}/${year}`;
+              } else {
+                cell.textContent = cellData;
+              }
             } else {
               cell.textContent = (cellData === "" || cellData === null) ? "-" : cellData;
             }
